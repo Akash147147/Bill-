@@ -7,14 +7,6 @@
     PARTIES: "gst_bill_parties_v1",
     INVOICE: "gst_bill_current_v1",
     SAVED_BILLS: "gst_bill_saved_bills_v1",
-    DB_CONFIG: "gst_bill_supabase_v1",
-  };
-
-  // Optional: paste your Supabase URL & Anon Key here before pushing to GitHub
-  // so every browser connects automatically without manual setup.
-  const SUPABASE_DEFAULTS = {
-    url: "",
-    anonKey: "",
   };
 
   const INDIAN_STATES = [
@@ -249,50 +241,49 @@
   let parties = loadJson(STORAGE_KEYS.PARTIES, DEFAULT_PARTIES);
   let invoice = loadJson(STORAGE_KEYS.INVOICE, createSampleInvoice());
   let savedBills = loadJson(STORAGE_KEYS.SAVED_BILLS, []);
-  let dbConfig = loadJson(STORAGE_KEYS.DB_CONFIG, SUPABASE_DEFAULTS);
+  let dbConnected = false;
 
   const $ = (id) => document.getElementById(id);
 
-  function isDbConfigured() {
-    return Boolean(dbConfig && dbConfig.url && dbConfig.anonKey);
-  }
-
   function setDbStatusBadge(connected, label) {
+    dbConnected = connected;
     const badge = $("dbStatusBadge");
     if (!badge) return;
     badge.classList.toggle("db-connected", connected);
     badge.classList.toggle("db-local", !connected);
-    badge.textContent = label || (connected ? "DB: Connected" : "DB: Local");
+    badge.textContent = label || (connected ? "DB: MongoDB" : "DB: Local");
   }
 
-  async function dbRequest(path, options = {}) {
-    if (!isDbConfigured()) return null;
-    const baseUrl = dbConfig.url.replace(/\/+$/, "");
-    const res = await fetch(`${baseUrl}/rest/v1/${path}`, {
+  async function apiRequest(path, options = {}) {
+    const res = await fetch(path, {
       ...options,
       headers: {
-        apikey: dbConfig.anonKey,
-        Authorization: `Bearer ${dbConfig.anonKey}`,
         "Content-Type": "application/json",
         ...(options.headers || {}),
       },
     });
     if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(errText || `HTTP ${res.status}`);
+      throw new Error(`HTTP ${res.status}`);
     }
-    if (res.status === 204) return [];
-    const text = await res.text();
-    return text ? JSON.parse(text) : [];
+    return res.json();
+  }
+
+  function mapTableToEndpoint(table) {
+    if (table === "items") return "/api/items";
+    if (table === "parties") return "/api/parties";
+    if (table === "business_settings") return "/api/business";
+    if (table === "invoices") return "/api/bills";
+    return `/api/${table}`;
   }
 
   async function dbUpsert(table, rows) {
-    if (!isDbConfigured()) return;
+    if (!dbConnected) return;
     try {
-      await dbRequest(table, {
+      const endpoint = mapTableToEndpoint(table);
+      const payload = table === "business_settings" ? rows[0] : rows;
+      await apiRequest(endpoint, {
         method: "POST",
-        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-        body: JSON.stringify(rows),
+        body: JSON.stringify(payload),
       });
     } catch (err) {
       console.warn(`DB upsert failed for ${table}:`, err.message);
@@ -300,9 +291,10 @@
   }
 
   async function dbDelete(table, id) {
-    if (!isDbConfigured()) return;
+    if (!dbConnected) return;
     try {
-      await dbRequest(`${table}?id=eq.${encodeURIComponent(id)}`, {
+      const endpoint = mapTableToEndpoint(table);
+      await apiRequest(`${endpoint}/${encodeURIComponent(id)}`, {
         method: "DELETE",
       });
     } catch (err) {
@@ -311,118 +303,46 @@
   }
 
   async function syncFromDatabase() {
-    if (!isDbConfigured()) {
-      setDbStatusBadge(false, "DB: Local");
-      return false;
-    }
     try {
-      const [dbItems, dbParties, dbBiz, dbBills] = await Promise.all([
-        dbRequest("items?select=*&order=created_at.asc"),
-        dbRequest("parties?select=*&order=created_at.asc"),
-        dbRequest("business_settings?select=*&id=eq.default"),
-        dbRequest("invoices?select=*&order=created_at.desc&limit=50"),
-      ]);
+      const health = await apiRequest("/api/health");
+      if (!health || !health.dbConnected) {
+        setDbStatusBadge(false, "DB: Local");
+        return false;
+      }
 
-      if (Array.isArray(dbItems) && dbItems.length > 0) {
-        catalog = dbItems.map((r) => ({
-          id: r.id,
-          name: r.name,
-          hsn: r.hsn,
-          uom: r.uom,
-          rate: Number(r.rate),
-          cgst: Number(r.cgst),
-          sgst: Number(r.sgst),
-          igst: Number(r.igst),
-        }));
+      const data = await apiRequest("/api/sync");
+      if (Array.isArray(data.items) && data.items.length > 0) {
+        catalog = data.items;
         saveJson(STORAGE_KEYS.CATALOG, catalog);
         renderCatalogDropdown();
       }
-
-      if (Array.isArray(dbParties) && dbParties.length > 0) {
-        parties = dbParties.map((r) => ({
-          id: r.id,
-          name: r.name,
-          address: r.address,
-          gstin: r.gstin,
-          state: r.state,
-          stateCode: r.state_code,
-        }));
+      if (Array.isArray(data.parties) && data.parties.length > 0) {
+        parties = data.parties;
         saveJson(STORAGE_KEYS.PARTIES, parties);
         renderPartyDropdowns();
       }
-
-      if (Array.isArray(dbBiz) && dbBiz.length > 0) {
-        const b = dbBiz[0];
-        business = {
-          name: b.name,
-          phone: b.phone,
-          address: b.address,
-          gstin: b.gstin,
-          state: b.state,
-          stateCode: b.state_code,
-          bankName: b.bank_name,
-          bankBranch: b.bank_branch,
-          bankAcc: b.bank_acc,
-          bankIfsc: b.bank_ifsc,
-          email: b.email,
-          terms: Array.isArray(b.terms) ? b.terms : [],
-        };
+      if (data.business) {
+        business = data.business;
         saveJson(STORAGE_KEYS.BUSINESS, business);
         renderBusinessDetails();
       }
-
-      if (Array.isArray(dbBills)) {
-        savedBills = dbBills.map((r) => ({
-          id: r.id,
-          invoiceNo: r.invoice_no,
-          invoiceDate: r.invoice_date,
-          billName: r.bill_name,
-          totalAmount: Number(r.total_amount),
-          data: r.data,
-        }));
+      if (Array.isArray(data.bills)) {
+        savedBills = data.bills;
         saveJson(STORAGE_KEYS.SAVED_BILLS, savedBills);
       }
 
-      setDbStatusBadge(true, "DB: Connected");
+      setDbStatusBadge(true, "DB: MongoDB");
       return true;
-    } catch (err) {
-      console.warn("Database sync error:", err.message);
-      setDbStatusBadge(false, "DB: Offline");
+    } catch {
+      setDbStatusBadge(false, "DB: Local");
       return false;
     }
   }
 
   async function pushAllLocalToDb() {
-    if (!isDbConfigured()) return false;
-    await dbUpsert("items", catalog);
-    await dbUpsert(
-      "parties",
-      parties.map((p) => ({
-        id: p.id,
-        name: p.name,
-        address: p.address,
-        gstin: p.gstin || "",
-        state: p.state || "AP",
-        state_code: p.stateCode || "37",
-      }))
-    );
-    await dbUpsert("business_settings", [
-      {
-        id: "default",
-        name: business.name,
-        phone: business.phone,
-        address: business.address,
-        gstin: business.gstin,
-        state: business.state,
-        state_code: business.stateCode,
-        bank_name: business.bankName,
-        bank_branch: business.bankBranch,
-        bank_acc: business.bankAcc,
-        bank_ifsc: business.bankIfsc,
-        email: business.email,
-        terms: business.terms || [],
-      },
-    ]);
+    await apiRequest("/api/items", { method: "POST", body: JSON.stringify(catalog) });
+    await apiRequest("/api/parties", { method: "POST", body: JSON.stringify(parties) });
+    await apiRequest("/api/business", { method: "POST", body: JSON.stringify(business) });
     return true;
   }
 
@@ -1335,43 +1255,32 @@
       $("billsModal").classList.remove("hidden");
     });
 
-    $("openDbBtn").addEventListener("click", () => {
-      $("dbUrlInput").value = dbConfig.url || "";
-      $("dbKeyInput").value = dbConfig.anonKey || "";
-      $("dbTestStatus").classList.add("hidden");
-      $("dbModal").classList.remove("hidden");
-    });
-
-    $("dbForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
+    $("openDbBtn").addEventListener("click", async () => {
       const statusEl = $("dbTestStatus");
-      statusEl.classList.remove("hidden");
-      statusEl.textContent = "Connecting to Supabase...";
-
-      dbConfig = {
-        url: $("dbUrlInput").value.trim(),
-        anonKey: $("dbKeyInput").value.trim(),
-      };
-      saveJson(STORAGE_KEYS.DB_CONFIG, dbConfig);
-
+      statusEl.textContent = "Checking MongoDB Atlas connection...";
+      $("dbModal").classList.remove("hidden");
       const ok = await syncFromDatabase();
       statusEl.textContent = ok
-        ? "Connected and synced with database!"
-        : "Connection failed. Check URL, Anon Key, and schema.sql tables.";
+        ? "Connected to MongoDB Atlas (gst_billing)."
+        : "Not connected to MongoDB Atlas (running in Local mode). Set MONGODB_URI on Render.";
+    });
+
+    $("dbRefreshBtn").addEventListener("click", async () => {
+      const statusEl = $("dbTestStatus");
+      statusEl.textContent = "Syncing with MongoDB Atlas...";
+      const ok = await syncFromDatabase();
+      statusEl.textContent = ok
+        ? "Synced with MongoDB Atlas!"
+        : "Not connected. Check MONGODB_URI environment variable on Render.";
     });
 
     $("dbPushLocalBtn").addEventListener("click", async () => {
       const statusEl = $("dbTestStatus");
-      statusEl.classList.remove("hidden");
-      if (!isDbConfigured()) {
-        statusEl.textContent = "Enter your Supabase URL and Anon Key first.";
-        return;
-      }
       statusEl.textContent = "Uploading local items, parties, and business details...";
       try {
         await pushAllLocalToDb();
-        setDbStatusBadge(true, "DB: Connected");
-        statusEl.textContent = "All local items, parties, and business details uploaded!";
+        setDbStatusBadge(true, "DB: MongoDB");
+        statusEl.textContent = "All local items, parties, and business details uploaded to MongoDB!";
       } catch (err) {
         statusEl.textContent = `Upload failed: ${err.message}`;
       }

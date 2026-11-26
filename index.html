@@ -727,21 +727,21 @@
     </div>
   </div>
 
-  <!-- Modal: Database Status (MongoDB Atlas) -->
+  <!-- Modal: Database Status (Neon PostgreSQL) -->
   <div id="dbModal" class="modal hidden no-print">
     <div class="modal-backdrop" data-close="dbModal"></div>
     <div class="modal-card">
       <div class="modal-header">
-        <h2>Cloud Database (MongoDB Atlas)</h2>
+        <h2>Cloud Database (Neon PostgreSQL)</h2>
         <button type="button" class="btn-close" data-close="dbModal">&times;</button>
       </div>
       <div class="modal-body">
         <p style="font-size: 13px; color: #475569; margin-top: 0;">
-          Your items, parties, business settings, and saved bills are stored in <strong>MongoDB Atlas</strong> when hosted on Render with the <code>MONGODB_URI</code> environment variable.
+          Your items, parties, business settings, and saved bills are stored in <strong>Neon PostgreSQL</strong> when hosted on Render with the <code>DATABASE_URL</code> environment variable.
         </p>
         <div id="dbTestStatus" class="live-calc-preview">Checking connection...</div>
         <div class="modal-footer-actions">
-          <button type="button" class="btn btn-secondary" id="dbPushLocalBtn">Upload Local Data to MongoDB</button>
+          <button type="button" class="btn btn-secondary" id="dbPushLocalBtn">Upload Local Data to Neon</button>
           <button type="button" class="btn btn-primary" id="dbRefreshBtn">Refresh / Sync Now</button>
         </div>
       </div>

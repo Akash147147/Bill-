@@ -251,7 +251,7 @@
     if (!badge) return;
     badge.classList.toggle("db-connected", connected);
     badge.classList.toggle("db-local", !connected);
-    badge.textContent = label || (connected ? "DB: MongoDB" : "DB: Local");
+    badge.textContent = label || (connected ? "DB: Neon" : "DB: Local");
   }
 
   async function apiRequest(path, options = {}) {
@@ -331,7 +331,7 @@
         saveJson(STORAGE_KEYS.SAVED_BILLS, savedBills);
       }
 
-      setDbStatusBadge(true, "DB: MongoDB");
+      setDbStatusBadge(true, "DB: Neon");
       return true;
     } catch {
       setDbStatusBadge(false, "DB: Local");
@@ -1257,21 +1257,21 @@
 
     $("openDbBtn").addEventListener("click", async () => {
       const statusEl = $("dbTestStatus");
-      statusEl.textContent = "Checking MongoDB Atlas connection...";
+      statusEl.textContent = "Checking Neon PostgreSQL connection...";
       $("dbModal").classList.remove("hidden");
       const ok = await syncFromDatabase();
       statusEl.textContent = ok
-        ? "Connected to MongoDB Atlas (gst_billing)."
-        : "Not connected to MongoDB Atlas (running in Local mode). Set MONGODB_URI on Render.";
+        ? "Connected to Neon PostgreSQL."
+        : "Not connected to Neon (running in Local mode). Set DATABASE_URL on Render.";
     });
 
     $("dbRefreshBtn").addEventListener("click", async () => {
       const statusEl = $("dbTestStatus");
-      statusEl.textContent = "Syncing with MongoDB Atlas...";
+      statusEl.textContent = "Syncing with Neon PostgreSQL...";
       const ok = await syncFromDatabase();
       statusEl.textContent = ok
-        ? "Synced with MongoDB Atlas!"
-        : "Not connected. Check MONGODB_URI environment variable on Render.";
+        ? "Synced with Neon PostgreSQL!"
+        : "Not connected. Check DATABASE_URL environment variable on Render.";
     });
 
     $("dbPushLocalBtn").addEventListener("click", async () => {
@@ -1279,8 +1279,8 @@
       statusEl.textContent = "Uploading local items, parties, and business details...";
       try {
         await pushAllLocalToDb();
-        setDbStatusBadge(true, "DB: MongoDB");
-        statusEl.textContent = "All local items, parties, and business details uploaded to MongoDB!";
+        setDbStatusBadge(true, "DB: Neon");
+        statusEl.textContent = "All local items, parties, and business details uploaded to Neon!";
       } catch (err) {
         statusEl.textContent = `Upload failed: ${err.message}`;
       }

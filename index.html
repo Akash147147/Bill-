@@ -18,15 +18,19 @@
     </div>
 
     <div class="toolbar-actions">
+      <span id="dbStatusBadge" class="db-badge db-local" title="Database connection status">DB: Local</span>
       <label class="theme-toggle" title="Switch between Yellow Bill Book look and White A4 paper">
         <input type="checkbox" id="paperThemeToggle" checked />
         <span>Yellow Bill Paper</span>
       </label>
       <button type="button" class="btn btn-secondary" id="openCatalogBtn">Manage Items</button>
       <button type="button" class="btn btn-secondary" id="openPartiesBtn">Manage Parties</button>
-      <button type="button" class="btn btn-secondary" id="openBusinessBtn">Business Settings</button>
-      <button type="button" class="btn btn-secondary" id="newBillBtn">New Blank Bill</button>
-      <button type="button" class="btn btn-secondary" id="loadSampleBtn">Sample Bill</button>
+      <button type="button" class="btn btn-secondary" id="openBusinessBtn">Business</button>
+      <button type="button" class="btn btn-secondary" id="saveBillBtn">Save Bill</button>
+      <button type="button" class="btn btn-secondary" id="openBillsBtn">Saved Bills</button>
+      <button type="button" class="btn btn-secondary" id="openDbBtn">Database</button>
+      <button type="button" class="btn btn-secondary" id="newBillBtn">New Bill</button>
+      <button type="button" class="btn btn-secondary" id="loadSampleBtn">Sample</button>
       <button type="button" class="btn btn-primary" id="printBillBtn">Print / Save PDF</button>
     </div>
   </header>
@@ -690,6 +694,64 @@
           <div class="modal-footer-actions">
             <button type="button" class="btn btn-secondary" id="resetBizBtn">Reset to Sample</button>
             <button type="submit" class="btn btn-primary">Save Business Details</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Saved Bills -->
+  <div id="billsModal" class="modal hidden no-print">
+    <div class="modal-backdrop" data-close="billsModal"></div>
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h2>Saved Bills History</h2>
+        <button type="button" class="btn-close" data-close="billsModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="catalog-table-wrap">
+          <table class="catalog-table">
+            <thead>
+              <tr>
+                <th>Invoice No.</th>
+                <th>Date</th>
+                <th>Party Name</th>
+                <th>Total (&#8377;)</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="savedBillsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Database Setup (Supabase) -->
+  <div id="dbModal" class="modal hidden no-print">
+    <div class="modal-backdrop" data-close="dbModal"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Cloud Database Setup (Supabase)</h2>
+        <button type="button" class="btn-close" data-close="dbModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13px; color: #475569; margin-top: 0;">
+          Connect a free <strong>Supabase</strong> PostgreSQL database so your items, parties, business details, and saved bills sync across all devices on your live website.
+        </p>
+        <form id="dbForm">
+          <div class="form-group">
+            <label for="dbUrlInput">Supabase Project URL</label>
+            <input type="url" id="dbUrlInput" placeholder="https://your-project.supabase.co" />
+          </div>
+          <div class="form-group">
+            <label for="dbKeyInput">Supabase Anon / Public Key</label>
+            <input type="text" id="dbKeyInput" placeholder="eyJhbGciOiJIUzI1NiIs..." />
+          </div>
+          <div id="dbTestStatus" class="live-calc-preview hidden"></div>
+          <div class="modal-footer-actions">
+            <button type="button" class="btn btn-secondary" id="dbPushLocalBtn">Upload Local Data to DB</button>
+            <button type="submit" class="btn btn-primary">Connect &amp; Sync</button>
           </div>
         </form>
       </div>

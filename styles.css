@@ -92,6 +92,26 @@ body {
   cursor: pointer;
 }
 
+.db-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.db-local {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.db-connected {
+  background: #166534;
+  color: #dcfce7;
+}
+
 /* Buttons */
 .btn {
   border: none;

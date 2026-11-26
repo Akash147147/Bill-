@@ -13,7 +13,7 @@
       <span class="brand-badge">GST</span>
       <div>
         <h1>Tax Invoice Designer</h1>
-        <p>Select items from dropdown, customize your bill &amp; print/save PDF</p>
+        <p>Select everything from dropdowns, customize your bill &amp; print/save PDF</p>
       </div>
     </div>
 
@@ -23,9 +23,10 @@
         <span>Yellow Bill Paper</span>
       </label>
       <button type="button" class="btn btn-secondary" id="openCatalogBtn">Manage Items</button>
+      <button type="button" class="btn btn-secondary" id="openPartiesBtn">Manage Parties</button>
       <button type="button" class="btn btn-secondary" id="openBusinessBtn">Business Settings</button>
       <button type="button" class="btn btn-secondary" id="newBillBtn">New Blank Bill</button>
-      <button type="button" class="btn btn-secondary" id="loadSampleBtn">Load Sample Bill</button>
+      <button type="button" class="btn btn-secondary" id="loadSampleBtn">Sample Bill</button>
       <button type="button" class="btn btn-primary" id="printBillBtn">Print / Save PDF</button>
     </div>
   </header>
@@ -33,7 +34,7 @@
   <main class="workspace no-print-bg">
     <!-- Left Sidebar: Quick Entry & Controls (hidden when printing) -->
     <aside class="control-panel no-print">
-      <!-- Add Item from Dropdown -->
+      <!-- 1. Add Item from Dropdown -->
       <section class="panel-card">
         <h2>1. Add Item to Bill</h2>
         <div class="form-group">
@@ -45,23 +46,46 @@
 
         <div class="form-row-2">
           <div class="form-group">
-            <label for="itemQty">Qty</label>
-            <input type="number" id="itemQty" min="0.01" step="any" value="1" />
+            <label for="itemQtySelect">Qty</label>
+            <select id="itemQtySelect">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="8">8</option>
+              <option value="10" selected>10</option>
+              <option value="12">12</option>
+              <option value="15">15</option>
+              <option value="20">20</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="__custom__">+ Custom Qty...</option>
+            </select>
+            <input type="number" id="itemQtyCustom" class="hidden custom-subinput" min="0.01" step="any" placeholder="Enter custom qty" />
           </div>
+
           <div class="form-group">
-            <label for="itemRate">Rate (&#8377;)</label>
-            <input type="number" id="itemRate" min="0" step="any" placeholder="0.00" />
+            <label for="itemRateSelect">Rate (&#8377;)</label>
+            <select id="itemRateSelect">
+              <option value="__custom__">+ Custom Rate...</option>
+            </select>
+            <input type="number" id="itemRateCustom" class="custom-subinput" min="0" step="any" placeholder="Enter rate" />
           </div>
         </div>
 
         <div class="form-row-3">
           <div class="form-group">
-            <label for="itemHsn">HSN</label>
-            <input type="text" id="itemHsn" placeholder="3302" />
+            <label for="itemHsnSelect">HSN Code</label>
+            <select id="itemHsnSelect"></select>
+            <input type="text" id="itemHsnCustom" class="hidden custom-subinput" placeholder="Enter HSN" />
           </div>
           <div class="form-group">
-            <label for="itemUom">UOM</label>
-            <input type="text" id="itemUom" placeholder="5kg" />
+            <label for="itemUomSelect">UOM</label>
+            <select id="itemUomSelect"></select>
+            <input type="text" id="itemUomCustom" class="hidden custom-subinput" placeholder="Enter UOM" />
           </div>
           <div class="form-group">
             <label for="itemGstType">GST Mode</label>
@@ -75,17 +99,35 @@
         <div class="form-row-2" id="cgstSgstInputs">
           <div class="form-group">
             <label for="itemCgst">CGST %</label>
-            <input type="number" id="itemCgst" min="0" max="50" step="any" value="9" />
+            <select id="itemCgst">
+              <option value="0">0%</option>
+              <option value="2.5">2.5%</option>
+              <option value="6">6%</option>
+              <option value="9" selected>9%</option>
+              <option value="14">14%</option>
+            </select>
           </div>
           <div class="form-group">
             <label for="itemSgst">SGST %</label>
-            <input type="number" id="itemSgst" min="0" max="50" step="any" value="9" />
+            <select id="itemSgst">
+              <option value="0">0%</option>
+              <option value="2.5">2.5%</option>
+              <option value="6">6%</option>
+              <option value="9" selected>9%</option>
+              <option value="14">14%</option>
+            </select>
           </div>
         </div>
 
         <div class="form-group hidden" id="igstInputGroup">
           <label for="itemIgst">IGST %</label>
-          <input type="number" id="itemIgst" min="0" max="50" step="any" value="18" />
+          <select id="itemIgst">
+            <option value="0">0%</option>
+            <option value="5">5%</option>
+            <option value="12">12%</option>
+            <option value="18" selected>18%</option>
+            <option value="28">28%</option>
+          </select>
         </div>
 
         <div class="live-calc-preview" id="liveItemPreview">
@@ -95,17 +137,27 @@
         <button type="button" class="btn btn-primary btn-full" id="addItemBtn">+ Add Item to Bill</button>
       </section>
 
-      <!-- Invoice & Customer Details -->
+      <!-- 2. Invoice & Party Details -->
       <section class="panel-card">
         <h2>2. Invoice &amp; Party Details</h2>
+
         <div class="form-row-2">
           <div class="form-group">
             <label for="inputInvoiceNo">Invoice No.</label>
-            <input type="text" id="inputInvoiceNo" />
+            <div class="input-with-btn">
+              <input type="text" id="inputInvoiceNo" />
+              <button type="button" class="btn-mini" id="nextInvoiceNoBtn" title="Increment Invoice No.">+1</button>
+            </div>
           </div>
           <div class="form-group">
-            <label for="inputInvoiceDate">Invoice Date</label>
-            <input type="text" id="inputInvoiceDate" placeholder="DD/MM/YY" />
+            <label for="invoiceDatePreset">Invoice Date</label>
+            <select id="invoiceDatePreset">
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="sample">31/10/26 (Sample)</option>
+              <option value="__custom__">Pick Date...</option>
+            </select>
+            <input type="date" id="inputInvoiceDatePicker" class="hidden custom-subinput" />
           </div>
         </div>
 
@@ -129,28 +181,47 @@
 
         <div class="form-row-2">
           <div class="form-group">
-            <label for="inputTransportMode">Transport Mode</label>
-            <input type="text" id="inputTransportMode" />
+            <label for="transportModeSelect">Transport Mode</label>
+            <select id="transportModeSelect"></select>
+            <input type="text" id="transportModeCustom" class="hidden custom-subinput" placeholder="Enter transport mode" />
           </div>
           <div class="form-group">
-            <label for="inputVehicleNo">Vehicle No.</label>
-            <input type="text" id="inputVehicleNo" />
+            <label for="vehicleNoSelect">Vehicle Number</label>
+            <select id="vehicleNoSelect"></select>
+            <input type="text" id="vehicleNoCustom" class="hidden custom-subinput" placeholder="e.g. AP 16 TX 1234" />
           </div>
         </div>
 
         <div class="form-row-2">
           <div class="form-group">
-            <label for="inputSupplyDate">Date &amp; Time of Supply</label>
-            <input type="text" id="inputSupplyDate" />
+            <label for="supplyDatePreset">Date &amp; Time of Supply</label>
+            <select id="supplyDatePreset">
+              <option value="same">Same as Invoice Date</option>
+              <option value="today">Today</option>
+              <option value="__custom__">Custom Date/Time...</option>
+            </select>
+            <input type="text" id="supplyDateCustom" class="hidden custom-subinput" placeholder="DD/MM/YY" />
           </div>
           <div class="form-group">
-            <label for="inputPlaceOfSupply">Place of Supply</label>
-            <input type="text" id="inputPlaceOfSupply" />
+            <label for="placeOfSupplySelect">Place of Supply</label>
+            <select id="placeOfSupplySelect"></select>
+            <input type="text" id="placeOfSupplyCustom" class="hidden custom-subinput" placeholder="Enter city / place" />
           </div>
         </div>
 
         <hr class="divider" />
-        <h3>Billed To (Receiver)</h3>
+        <div class="section-header-inline">
+          <h3>Billed To (Receiver)</h3>
+          <button type="button" class="btn-mini" id="saveCurrentPartyBtn" title="Save current party details to dropdown">+ Save Party</button>
+        </div>
+
+        <div class="form-group">
+          <label for="partySelect">Select Party (Dropdown)</label>
+          <select id="partySelect">
+            <option value="">-- Choose saved party --</option>
+          </select>
+        </div>
+
         <div class="form-group">
           <label for="inputBillName">Party Name</label>
           <input type="text" id="inputBillName" />
@@ -165,8 +236,8 @@
             <input type="text" id="inputBillGstin" maxlength="15" />
           </div>
           <div class="form-group">
-            <label for="inputBillStateCode">State Code</label>
-            <input type="text" id="inputBillStateCode" maxlength="2" />
+            <label for="billStateSelect">State &amp; Code</label>
+            <select id="billStateSelect"></select>
           </div>
         </div>
 
@@ -179,6 +250,12 @@
           <hr class="divider" />
           <h3>Shipped To (Consignee)</h3>
           <div class="form-group">
+            <label for="shipPartySelect">Select Consignee (Dropdown)</label>
+            <select id="shipPartySelect">
+              <option value="">-- Choose saved party --</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label for="inputShipName">Consignee Name</label>
             <input type="text" id="inputShipName" />
           </div>
@@ -186,30 +263,39 @@
             <label for="inputShipAddress">Address</label>
             <input type="text" id="inputShipAddress" />
           </div>
-          <div class="form-row-3">
+          <div class="form-row-2">
             <div class="form-group">
               <label for="inputShipGstin">GSTIN</label>
               <input type="text" id="inputShipGstin" maxlength="15" />
             </div>
             <div class="form-group">
-              <label for="inputShipState">State</label>
-              <input type="text" id="inputShipState" />
-            </div>
-            <div class="form-group">
-              <label for="inputShipStateCode">Code</label>
-              <input type="text" id="inputShipStateCode" maxlength="2" />
+              <label for="shipStateSelect">State &amp; Code</label>
+              <select id="shipStateSelect"></select>
             </div>
           </div>
         </div>
 
-        <div class="form-row-2" style="margin-top: 10px;">
+        <hr class="divider" />
+        <div class="form-row-2">
           <div class="form-group">
-            <label for="inputRoundOff">Round Off (&#8377;)</label>
-            <input type="number" id="inputRoundOff" step="0.01" value="0" />
+            <label for="roundOffMode">Round Off</label>
+            <select id="roundOffMode">
+              <option value="0">None (0.00)</option>
+              <option value="auto">Auto Round Off</option>
+              <option value="__custom__">Custom...</option>
+            </select>
+            <input type="number" id="inputRoundOffCustom" class="hidden custom-subinput" step="0.01" placeholder="0.00" />
           </div>
           <div class="form-group">
-            <label for="inputEmptyRows">Min Table Rows</label>
-            <input type="number" id="inputEmptyRows" min="5" max="20" value="13" />
+            <label for="inputEmptyRows">Table Rows</label>
+            <select id="inputEmptyRows">
+              <option value="8">8 Rows</option>
+              <option value="10">10 Rows</option>
+              <option value="13" selected>13 Rows (Standard)</option>
+              <option value="15">15 Rows</option>
+              <option value="18">18 Rows</option>
+              <option value="20">20 Rows</option>
+            </select>
           </div>
         </div>
       </section>
@@ -324,9 +410,7 @@
               <th class="col-amt">Amount</th>
             </tr>
           </thead>
-          <tbody id="invoiceItemsBody">
-            <!-- Dynamically populated -->
-          </tbody>
+          <tbody id="invoiceItemsBody"></tbody>
           <tfoot>
             <tr class="inv-total-row">
               <td colspan="6" class="total-label">TOTAL</td>
@@ -438,15 +522,33 @@
             </div>
             <div class="form-group">
               <label for="catCgst">CGST %</label>
-              <input type="number" id="catCgst" required min="0" step="any" value="9" />
+              <select id="catCgst">
+                <option value="0">0%</option>
+                <option value="2.5">2.5%</option>
+                <option value="6">6%</option>
+                <option value="9" selected>9%</option>
+                <option value="14">14%</option>
+              </select>
             </div>
             <div class="form-group">
               <label for="catSgst">SGST %</label>
-              <input type="number" id="catSgst" required min="0" step="any" value="9" />
+              <select id="catSgst">
+                <option value="0">0%</option>
+                <option value="2.5">2.5%</option>
+                <option value="6">6%</option>
+                <option value="9" selected>9%</option>
+                <option value="14">14%</option>
+              </select>
             </div>
             <div class="form-group">
               <label for="catIgst">IGST %</label>
-              <input type="number" id="catIgst" required min="0" step="any" value="18" />
+              <select id="catIgst">
+                <option value="0">0%</option>
+                <option value="5">5%</option>
+                <option value="12">12%</option>
+                <option value="18" selected>18%</option>
+                <option value="28">28%</option>
+              </select>
             </div>
           </div>
           <button type="submit" class="btn btn-primary">+ Save Item to Dropdown</button>
@@ -465,6 +567,57 @@
               </tr>
             </thead>
             <tbody id="catalogTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Manage Saved Parties -->
+  <div id="partiesModal" class="modal hidden no-print">
+    <div class="modal-backdrop" data-close="partiesModal"></div>
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h2>Manage Saved Parties (Dropdown Customers)</h2>
+        <button type="button" class="btn-close" data-close="partiesModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="partyForm" class="catalog-form">
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="partyFormName">Party Name</label>
+              <input type="text" id="partyFormName" required placeholder="e.g. K. Varaprasad" />
+            </div>
+            <div class="form-group">
+              <label for="partyFormAddress">Address / City</label>
+              <input type="text" id="partyFormAddress" required placeholder="e.g. GAJUWAKA" />
+            </div>
+          </div>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="partyFormGstin">GSTIN No. (Optional)</label>
+              <input type="text" id="partyFormGstin" maxlength="15" placeholder="15-digit GSTIN" />
+            </div>
+            <div class="form-group">
+              <label for="partyFormState">State &amp; Code</label>
+              <select id="partyFormState"></select>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">+ Save Party to Dropdown</button>
+        </form>
+
+        <div class="catalog-table-wrap">
+          <table class="catalog-table">
+            <thead>
+              <tr>
+                <th>Party Name</th>
+                <th>Address</th>
+                <th>GSTIN</th>
+                <th>State Code</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="partiesTableBody"></tbody>
           </table>
         </div>
       </div>
@@ -495,18 +648,14 @@
             <label for="bizAddress">Address</label>
             <input type="text" id="bizAddress" />
           </div>
-          <div class="form-row-3">
+          <div class="form-row-2">
             <div class="form-group">
               <label for="bizGstin">GSTIN</label>
               <input type="text" id="bizGstin" />
             </div>
             <div class="form-group">
-              <label for="bizState">State</label>
-              <input type="text" id="bizState" />
-            </div>
-            <div class="form-group">
-              <label for="bizStateCode">State Code</label>
-              <input type="text" id="bizStateCode" />
+              <label for="bizStateSelect">State &amp; Code</label>
+              <select id="bizStateSelect"></select>
             </div>
           </div>
           <hr class="divider" />

@@ -4,7 +4,53 @@
   const STORAGE_KEYS = {
     BUSINESS: "gst_bill_business_v1",
     CATALOG: "gst_bill_catalog_v1",
+    PARTIES: "gst_bill_parties_v1",
     INVOICE: "gst_bill_current_v1",
+  };
+
+  const INDIAN_STATES = [
+    { code: "37", name: "Andhra Pradesh", short: "AP" },
+    { code: "36", name: "Telangana", short: "TS" },
+    { code: "33", name: "Tamil Nadu", short: "TN" },
+    { code: "29", name: "Karnataka", short: "KA" },
+    { code: "32", name: "Kerala", short: "KL" },
+    { code: "27", name: "Maharashtra", short: "MH" },
+    { code: "24", name: "Gujarat", short: "GJ" },
+    { code: "07", name: "Delhi", short: "DL" },
+    { code: "09", name: "Uttar Pradesh", short: "UP" },
+    { code: "19", name: "West Bengal", short: "WB" },
+    { code: "21", name: "Odisha", short: "OD" },
+    { code: "23", name: "Madhya Pradesh", short: "MP" },
+    { code: "08", name: "Rajasthan", short: "RJ" },
+    { code: "03", name: "Punjab", short: "PB" },
+    { code: "06", name: "Haryana", short: "HR" },
+    { code: "10", name: "Bihar", short: "BR" },
+    { code: "18", name: "Assam", short: "AS" },
+    { code: "34", name: "Puducherry", short: "PY" },
+  ];
+
+  const PRESET_LISTS = {
+    hsn: ["3302", "2106", "1701", "0804", "3923", "2202"],
+    uom: ["5kg", "1kg", "500g", "250g", "10kg", "25kg", "Box", "Nos", "Pcs", "Ltr"],
+    rates: ["2250", "3150", "2600", "650", "500", "1000", "1500", "2000", "3000"],
+    transportModes: [
+      "Kaleswari Lorry",
+      "Navata Transport",
+      "VRL Logistics",
+      "Kranthi Transport",
+      "Self Pickup",
+      "Auto / Van",
+    ],
+    vehicleNos: ["", "AP 16 TX 1234", "AP 39 UB 5678", "TS 08 UA 9012"],
+    placesOfSupply: [
+      "VJA",
+      "Gajuwaka",
+      "Visakhapatnam",
+      "Guntur",
+      "Rajahmundry",
+      "Hyderabad",
+      "Tirupati",
+    ],
   };
 
   const DEFAULT_BUSINESS = {
@@ -68,6 +114,32 @@
     },
   ];
 
+  const DEFAULT_PARTIES = [
+    {
+      id: "party-varaprasad",
+      name: "K. Varaprasad",
+      address: "GAJUWAKA",
+      gstin: "",
+      state: "AP",
+      stateCode: "37",
+    },
+    {
+      id: "party-sri-lakshmi",
+      name: "Sri Lakshmi Traders",
+      address: "Governorpet, VIJAYAWADA",
+      gstin: "37AABCU9603R1ZM",
+      state: "AP",
+      stateCode: "37",
+    },
+  ];
+
+  function formatShortDate(dateObj) {
+    const dd = String(dateObj.getDate()).padStart(2, "0");
+    const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const yy = String(dateObj.getFullYear()).slice(-2);
+    return `${dd}/${mm}/${yy}`;
+  }
+
   function createSampleInvoice() {
     return {
       invoiceNo: "634",
@@ -88,6 +160,7 @@
       shipGstin: "",
       shipState: "AP",
       shipStateCode: "37",
+      roundOffMode: "0",
       roundOff: 0,
       minRows: 13,
       items: [
@@ -118,31 +191,27 @@
   }
 
   function createBlankInvoice() {
-    const today = new Date();
-    const dd = String(today.getDate()).padStart(2, "0");
-    const mm = String(today.getMonth() + 1).padStart(2, "0");
-    const yy = String(today.getFullYear()).slice(-2);
-    const formattedDate = `${dd}/${mm}/${yy}`;
-
+    const todayStr = formatShortDate(new Date());
     return {
       invoiceNo: "",
-      invoiceDate: formattedDate,
+      invoiceDate: todayStr,
       payMode: "Cash / Credit",
       reverseCharge: "No",
-      transportMode: "",
+      transportMode: "Kaleswari Lorry",
       vehicleNo: "",
-      supplyDate: formattedDate,
-      placeOfSupply: "",
+      supplyDate: todayStr,
+      placeOfSupply: "VJA",
       billName: "",
       billAddress: "",
       billGstin: "",
-      billStateCode: "",
+      billStateCode: "37",
       sameAsBilled: true,
       shipName: "",
       shipAddress: "",
       shipGstin: "",
-      shipState: "",
-      shipStateCode: "",
+      shipState: "AP",
+      shipStateCode: "37",
+      roundOffMode: "0",
       roundOff: 0,
       minRows: 13,
       items: [],
@@ -168,6 +237,7 @@
 
   let business = loadJson(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
   let catalog = loadJson(STORAGE_KEYS.CATALOG, DEFAULT_CATALOG);
+  let parties = loadJson(STORAGE_KEYS.PARTIES, DEFAULT_PARTIES);
   let invoice = loadJson(STORAGE_KEYS.INVOICE, createSampleInvoice());
 
   const $ = (id) => document.getElementById(id);
@@ -238,8 +308,82 @@
     if (paise > 0) {
       result += (result ? " and " : "") + twoDigits(paise) + " paise";
     }
-    result = result.charAt(0).toUpperCase() + result.slice(1).toLowerCase() + " only";
-    return result;
+    return result.charAt(0).toUpperCase() + result.slice(1).toLowerCase() + " only";
+  }
+
+  /**
+   * Populates a <select> with string options + "+ Custom..." and wires a custom input.
+   */
+  function initSmartDropdown(selectId, customInputId, options, customLabel, onValueChange) {
+    const sel = $(selectId);
+    const customInput = $(customInputId);
+
+    sel.innerHTML = "";
+    options.forEach((val) => {
+      const opt = document.createElement("option");
+      opt.value = val;
+      opt.textContent = val === "" ? "(None)" : val;
+      sel.appendChild(opt);
+    });
+
+    const customOpt = document.createElement("option");
+    customOpt.value = "__custom__";
+    customOpt.textContent = customLabel;
+    sel.appendChild(customOpt);
+
+    sel.addEventListener("change", () => {
+      const isCustom = sel.value === "__custom__";
+      customInput.classList.toggle("hidden", !isCustom);
+      if (isCustom) {
+        customInput.focus();
+      }
+      onValueChange(getSmartValue(selectId, customInputId));
+    });
+
+    customInput.addEventListener("input", () => {
+      onValueChange(getSmartValue(selectId, customInputId));
+    });
+  }
+
+  function getSmartValue(selectId, customInputId) {
+    const sel = $(selectId);
+    if (sel.value === "__custom__") {
+      return $(customInputId).value;
+    }
+    return sel.value;
+  }
+
+  function setSmartValue(selectId, customInputId, value) {
+    const sel = $(selectId);
+    const customInput = $(customInputId);
+    const strVal = value == null ? "" : String(value);
+    const hasOption = Array.from(sel.options).some(
+      (opt) => opt.value !== "__custom__" && opt.value === strVal
+    );
+
+    if (hasOption) {
+      sel.value = strVal;
+      customInput.classList.add("hidden");
+    } else {
+      sel.value = "__custom__";
+      customInput.value = strVal;
+      customInput.classList.remove("hidden");
+    }
+  }
+
+  function populateStateDropdown(selectId) {
+    const sel = $(selectId);
+    sel.innerHTML = "";
+    INDIAN_STATES.forEach((st) => {
+      const opt = document.createElement("option");
+      opt.value = st.code;
+      opt.textContent = `${st.code} - ${st.name} (${st.short})`;
+      sel.appendChild(opt);
+    });
+  }
+
+  function findStateByCode(code) {
+    return INDIAN_STATES.find((s) => s.code === String(code)) || INDIAN_STATES[0];
   }
 
   function renderBusinessDetails() {
@@ -283,6 +427,25 @@
     }
   }
 
+  function renderPartyDropdowns() {
+    ["partySelect", "shipPartySelect"].forEach((selectId) => {
+      const select = $(selectId);
+      const prevVal = select.value;
+      select.innerHTML = '<option value="">-- Choose saved party --</option>';
+
+      parties.forEach((p) => {
+        const opt = document.createElement("option");
+        opt.value = p.id;
+        opt.textContent = `${p.name} - ${p.address}`;
+        select.appendChild(opt);
+      });
+
+      if (parties.some((p) => p.id === prevVal)) {
+        select.value = prevVal;
+      }
+    });
+  }
+
   function renderCatalogTable() {
     const tbody = $("catalogTableBody");
     tbody.innerHTML = "";
@@ -323,6 +486,43 @@
     });
   }
 
+  function renderPartiesTable() {
+    const tbody = $("partiesTableBody");
+    tbody.innerHTML = "";
+
+    parties.forEach((p, index) => {
+      const tr = document.createElement("tr");
+
+      const tdName = document.createElement("td");
+      tdName.textContent = p.name;
+
+      const tdAddr = document.createElement("td");
+      tdAddr.textContent = p.address;
+
+      const tdGstin = document.createElement("td");
+      tdGstin.textContent = p.gstin || "-";
+
+      const tdCode = document.createElement("td");
+      tdCode.textContent = `${p.stateCode} (${p.state})`;
+
+      const tdAct = document.createElement("td");
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "btn-danger-sm";
+      delBtn.textContent = "Delete";
+      delBtn.addEventListener("click", () => {
+        parties.splice(index, 1);
+        saveJson(STORAGE_KEYS.PARTIES, parties);
+        renderPartyDropdowns();
+        renderPartiesTable();
+      });
+      tdAct.appendChild(delBtn);
+
+      tr.append(tdName, tdAddr, tdGstin, tdCode, tdAct);
+      tbody.appendChild(tr);
+    });
+  }
+
   function renderGstinBoxes(gstinStr) {
     const container = $("viewBillGstinBoxes");
     container.innerHTML = "";
@@ -337,18 +537,47 @@
 
   function syncFormInputsFromInvoice() {
     $("inputInvoiceNo").value = invoice.invoiceNo;
-    $("inputInvoiceDate").value = invoice.invoiceDate;
+
+    // Invoice Date Preset
+    const todayStr = formatShortDate(new Date());
+    const yest = new Date();
+    yest.setDate(yest.getDate() - 1);
+    const yestStr = formatShortDate(yest);
+
+    if (invoice.invoiceDate === todayStr) {
+      $("invoiceDatePreset").value = "today";
+      $("inputInvoiceDatePicker").classList.add("hidden");
+    } else if (invoice.invoiceDate === yestStr) {
+      $("invoiceDatePreset").value = "yesterday";
+      $("inputInvoiceDatePicker").classList.add("hidden");
+    } else if (invoice.invoiceDate === "31/10/26") {
+      $("invoiceDatePreset").value = "sample";
+      $("inputInvoiceDatePicker").classList.add("hidden");
+    } else {
+      $("invoiceDatePreset").value = "__custom__";
+      $("inputInvoiceDatePicker").classList.remove("hidden");
+    }
+
     $("inputPayMode").value = invoice.payMode;
     $("inputReverseCharge").value = invoice.reverseCharge;
-    $("inputTransportMode").value = invoice.transportMode;
-    $("inputVehicleNo").value = invoice.vehicleNo;
-    $("inputSupplyDate").value = invoice.supplyDate;
-    $("inputPlaceOfSupply").value = invoice.placeOfSupply;
+
+    setSmartValue("transportModeSelect", "transportModeCustom", invoice.transportMode);
+    setSmartValue("vehicleNoSelect", "vehicleNoCustom", invoice.vehicleNo);
+    setSmartValue("placeOfSupplySelect", "placeOfSupplyCustom", invoice.placeOfSupply);
+
+    if (invoice.supplyDate === invoice.invoiceDate) {
+      $("supplyDatePreset").value = "same";
+      $("supplyDateCustom").classList.add("hidden");
+    } else {
+      $("supplyDatePreset").value = "__custom__";
+      $("supplyDateCustom").value = invoice.supplyDate;
+      $("supplyDateCustom").classList.remove("hidden");
+    }
 
     $("inputBillName").value = invoice.billName;
     $("inputBillAddress").value = invoice.billAddress;
     $("inputBillGstin").value = invoice.billGstin;
-    $("inputBillStateCode").value = invoice.billStateCode;
+    $("billStateSelect").value = invoice.billStateCode || "37";
 
     $("sameAsBilledToggle").checked = invoice.sameAsBilled;
     $("shippedToFields").classList.toggle("hidden", invoice.sameAsBilled);
@@ -356,11 +585,12 @@
     $("inputShipName").value = invoice.shipName;
     $("inputShipAddress").value = invoice.shipAddress;
     $("inputShipGstin").value = invoice.shipGstin;
-    $("inputShipState").value = invoice.shipState;
-    $("inputShipStateCode").value = invoice.shipStateCode;
+    $("shipStateSelect").value = invoice.shipStateCode || "37";
 
-    $("inputRoundOff").value = invoice.roundOff;
-    $("inputEmptyRows").value = invoice.minRows;
+    $("roundOffMode").value = invoice.roundOffMode || "0";
+    $("inputRoundOffCustom").classList.toggle("hidden", $("roundOffMode").value !== "__custom__");
+    $("inputRoundOffCustom").value = invoice.roundOff || 0;
+    $("inputEmptyRows").value = String(invoice.minRows || 13);
   }
 
   function renderInvoice() {
@@ -380,10 +610,11 @@
     renderGstinBoxes(invoice.billGstin);
     $("viewBillStateCode").textContent = invoice.billStateCode;
 
+    const billStateObj = findStateByCode(invoice.billStateCode);
     const shipName = invoice.sameAsBilled ? invoice.billName : invoice.shipName;
     const shipAddress = invoice.sameAsBilled ? invoice.billAddress : invoice.shipAddress;
     const shipGstin = invoice.sameAsBilled ? invoice.billGstin : invoice.shipGstin;
-    const shipState = invoice.sameAsBilled ? (invoice.shipState || "AP") : invoice.shipState;
+    const shipState = invoice.sameAsBilled ? billStateObj.short : invoice.shipState;
     const shipStateCode = invoice.sameAsBilled ? invoice.billStateCode : invoice.shipStateCode;
 
     $("viewShipName").textContent = shipName;
@@ -414,7 +645,6 @@
       totalIgst += igstAmt;
 
       const tr = document.createElement("tr");
-
       const cells = [
         { text: String(index + 1), cls: "center" },
         { text: item.name, cls: "" },
@@ -471,23 +701,31 @@
     $("totalSgstCell").textContent = totalSgst > 0 ? formatCompact(totalSgst) : "";
     $("totalIgstCell").textContent = totalIgst > 0 ? formatCompact(totalIgst) : "";
 
-    const roundOff = Number(invoice.roundOff) || 0;
     const totalGst = totalCgst + totalSgst + totalIgst;
-    const grandTotal = totalTaxable + totalGst + roundOff;
+    const rawTotal = totalTaxable + totalGst;
+
+    let roundOff = 0;
+    if (invoice.roundOffMode === "auto") {
+      roundOff = Math.round(rawTotal) - rawTotal;
+    } else if (invoice.roundOffMode === "__custom__") {
+      roundOff = Number(invoice.roundOff) || 0;
+    }
+
+    const grandTotal = rawTotal + roundOff;
 
     $("sumBeforeTax").textContent = formatMoney(totalTaxable);
     $("sumCgst").textContent = totalCgst > 0 ? formatMoney(totalCgst) : "";
     $("sumSgst").textContent = totalSgst > 0 ? formatMoney(totalSgst) : "";
     $("sumIgst").textContent = totalIgst > 0 ? formatMoney(totalIgst) : "";
-    $("sumRoundOff").textContent = roundOff !== 0 ? formatMoney(roundOff) : "";
+    $("sumRoundOff").textContent = Math.abs(roundOff) >= 0.005 ? formatMoney(roundOff) : "";
     $("sumTotalGst").textContent = formatMoney(totalGst);
     $("sumAfterTax").textContent = formatMoney(grandTotal);
     $("viewAmountWords").textContent = numberToIndianWords(grandTotal);
   }
 
   function updateLiveItemPreview() {
-    const qty = Number($("itemQty").value) || 0;
-    const rate = Number($("itemRate").value) || 0;
+    const qty = Number(getSmartValue("itemQtySelect", "itemQtyCustom")) || 0;
+    const rate = Number(getSmartValue("itemRateSelect", "itemRateCustom")) || 0;
     const taxable = qty * rate;
     const gstType = $("itemGstType").value;
 
@@ -506,17 +744,76 @@
       `Taxable: ₹${formatMoney(taxable)} | Tax: ₹${formatMoney(tax)} | Total: ₹${formatMoney(total)}`;
   }
 
+  function setupAllDropdowns() {
+    populateStateDropdown("billStateSelect");
+    populateStateDropdown("shipStateSelect");
+    populateStateDropdown("partyFormState");
+    populateStateDropdown("bizStateSelect");
+
+    initSmartDropdown("itemHsnSelect", "itemHsnCustom", PRESET_LISTS.hsn, "+ Custom HSN...", () => {});
+    initSmartDropdown("itemUomSelect", "itemUomCustom", PRESET_LISTS.uom, "+ Custom UOM...", () => {});
+    initSmartDropdown(
+      "itemRateSelect",
+      "itemRateCustom",
+      PRESET_LISTS.rates,
+      "+ Custom Rate...",
+      updateLiveItemPreview
+    );
+
+    initSmartDropdown(
+      "transportModeSelect",
+      "transportModeCustom",
+      PRESET_LISTS.transportModes,
+      "+ Custom Transport...",
+      (val) => {
+        invoice.transportMode = val;
+        renderInvoice();
+      }
+    );
+
+    initSmartDropdown(
+      "vehicleNoSelect",
+      "vehicleNoCustom",
+      PRESET_LISTS.vehicleNos,
+      "+ Custom Vehicle...",
+      (val) => {
+        invoice.vehicleNo = val;
+        renderInvoice();
+      }
+    );
+
+    initSmartDropdown(
+      "placeOfSupplySelect",
+      "placeOfSupplyCustom",
+      PRESET_LISTS.placesOfSupply,
+      "+ Custom Place...",
+      (val) => {
+        invoice.placeOfSupply = val;
+        renderInvoice();
+      }
+    );
+  }
+
   function bindEvents() {
-    // Dropdown selection auto-fills rate, HSN, UOM, GST
+    // Qty dropdown + custom
+    $("itemQtySelect").addEventListener("change", () => {
+      const isCustom = $("itemQtySelect").value === "__custom__";
+      $("itemQtyCustom").classList.toggle("hidden", !isCustom);
+      if (isCustom) $("itemQtyCustom").focus();
+      updateLiveItemPreview();
+    });
+    $("itemQtyCustom").addEventListener("input", updateLiveItemPreview);
+
+    // Item selection auto-fills rate, HSN, UOM, GST dropdowns
     $("itemSelect").addEventListener("change", (e) => {
       const item = catalog.find((i) => i.id === e.target.value);
       if (item) {
-        $("itemRate").value = item.rate;
-        $("itemHsn").value = item.hsn;
-        $("itemUom").value = item.uom;
-        $("itemCgst").value = item.cgst;
-        $("itemSgst").value = item.sgst;
-        $("itemIgst").value = item.igst;
+        setSmartValue("itemRateSelect", "itemRateCustom", item.rate);
+        setSmartValue("itemHsnSelect", "itemHsnCustom", item.hsn);
+        setSmartValue("itemUomSelect", "itemUomCustom", item.uom);
+        $("itemCgst").value = String(item.cgst);
+        $("itemSgst").value = String(item.sgst);
+        $("itemIgst").value = String(item.igst);
       }
       updateLiveItemPreview();
     });
@@ -528,8 +825,8 @@
       updateLiveItemPreview();
     });
 
-    ["itemQty", "itemRate", "itemCgst", "itemSgst", "itemIgst"].forEach((id) => {
-      $(id).addEventListener("input", updateLiveItemPreview);
+    ["itemCgst", "itemSgst", "itemIgst"].forEach((id) => {
+      $(id).addEventListener("change", updateLiveItemPreview);
     });
 
     $("addItemBtn").addEventListener("click", () => {
@@ -537,10 +834,10 @@
       const name = selected ? selected.name : prompt("Enter item description:");
       if (!name || !name.trim()) return;
 
-      const qty = Number($("itemQty").value) || 1;
-      const rate = Number($("itemRate").value) || 0;
-      const hsn = $("itemHsn").value.trim();
-      const uom = $("itemUom").value.trim();
+      const qty = Number(getSmartValue("itemQtySelect", "itemQtyCustom")) || 1;
+      const rate = Number(getSmartValue("itemRateSelect", "itemRateCustom")) || 0;
+      const hsn = getSmartValue("itemHsnSelect", "itemHsnCustom").trim();
+      const uom = getSmartValue("itemUomSelect", "itemUomCustom").trim();
       const gstType = $("itemGstType").value;
 
       invoice.items.push({
@@ -558,31 +855,150 @@
       renderInvoice();
     });
 
-    // Live binding for invoice fields
+    // Invoice No +1 button
+    $("nextInvoiceNoBtn").addEventListener("click", () => {
+      const current = parseInt($("inputInvoiceNo").value, 10);
+      const next = Number.isFinite(current) ? current + 1 : 1;
+      $("inputInvoiceNo").value = String(next);
+      invoice.invoiceNo = String(next);
+      renderInvoice();
+    });
+
+    // Invoice Date Preset Dropdown
+    $("invoiceDatePreset").addEventListener("change", (e) => {
+      const val = e.target.value;
+      const picker = $("inputInvoiceDatePicker");
+      picker.classList.toggle("hidden", val !== "__custom__");
+
+      if (val === "today") {
+        invoice.invoiceDate = formatShortDate(new Date());
+      } else if (val === "yesterday") {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        invoice.invoiceDate = formatShortDate(d);
+      } else if (val === "sample") {
+        invoice.invoiceDate = "31/10/26";
+      }
+
+      if ($("supplyDatePreset").value === "same") {
+        invoice.supplyDate = invoice.invoiceDate;
+      }
+      renderInvoice();
+    });
+
+    $("inputInvoiceDatePicker").addEventListener("change", (e) => {
+      if (!e.target.value) return;
+      const [yyyy, mm, dd] = e.target.value.split("-");
+      invoice.invoiceDate = `${dd}/${mm}/${yyyy.slice(-2)}`;
+      if ($("supplyDatePreset").value === "same") {
+        invoice.supplyDate = invoice.invoiceDate;
+      }
+      renderInvoice();
+    });
+
+    // Supply Date Preset Dropdown
+    $("supplyDatePreset").addEventListener("change", (e) => {
+      const val = e.target.value;
+      const custom = $("supplyDateCustom");
+      custom.classList.toggle("hidden", val !== "__custom__");
+      if (val === "same") {
+        invoice.supplyDate = invoice.invoiceDate;
+      } else if (val === "today") {
+        invoice.supplyDate = formatShortDate(new Date());
+      } else {
+        custom.focus();
+      }
+      renderInvoice();
+    });
+
+    $("supplyDateCustom").addEventListener("input", (e) => {
+      invoice.supplyDate = e.target.value;
+      renderInvoice();
+    });
+
+    // Party Dropdowns
+    $("partySelect").addEventListener("change", (e) => {
+      const party = parties.find((p) => p.id === e.target.value);
+      if (!party) return;
+      invoice.billName = party.name;
+      invoice.billAddress = party.address;
+      invoice.billGstin = party.gstin || "";
+      invoice.billStateCode = party.stateCode || "37";
+      syncFormInputsFromInvoice();
+      renderInvoice();
+    });
+
+    $("shipPartySelect").addEventListener("change", (e) => {
+      const party = parties.find((p) => p.id === e.target.value);
+      if (!party) return;
+      invoice.shipName = party.name;
+      invoice.shipAddress = party.address;
+      invoice.shipGstin = party.gstin || "";
+      invoice.shipState = party.state || "AP";
+      invoice.shipStateCode = party.stateCode || "37";
+      syncFormInputsFromInvoice();
+      renderInvoice();
+    });
+
+    $("saveCurrentPartyBtn").addEventListener("click", () => {
+      const name = $("inputBillName").value.trim();
+      const address = $("inputBillAddress").value.trim();
+      if (!name) return;
+      const st = findStateByCode($("billStateSelect").value);
+      parties.push({
+        id: "party-" + Date.now(),
+        name,
+        address,
+        gstin: $("inputBillGstin").value.trim().toUpperCase(),
+        state: st.short,
+        stateCode: st.code,
+      });
+      saveJson(STORAGE_KEYS.PARTIES, parties);
+      renderPartyDropdowns();
+    });
+
+    // State Dropdowns
+    $("billStateSelect").addEventListener("change", (e) => {
+      invoice.billStateCode = e.target.value;
+      renderInvoice();
+    });
+
+    $("shipStateSelect").addEventListener("change", (e) => {
+      const st = findStateByCode(e.target.value);
+      invoice.shipStateCode = st.code;
+      invoice.shipState = st.short;
+      renderInvoice();
+    });
+
+    // Round Off Dropdown
+    $("roundOffMode").addEventListener("change", (e) => {
+      invoice.roundOffMode = e.target.value;
+      $("inputRoundOffCustom").classList.toggle("hidden", e.target.value !== "__custom__");
+      renderInvoice();
+    });
+
+    $("inputRoundOffCustom").addEventListener("input", (e) => {
+      invoice.roundOff = Number(e.target.value) || 0;
+      renderInvoice();
+    });
+
+    // Live binding for remaining inputs/selects
     const fieldMap = [
       ["inputInvoiceNo", "invoiceNo"],
-      ["inputInvoiceDate", "invoiceDate"],
       ["inputPayMode", "payMode"],
       ["inputReverseCharge", "reverseCharge"],
-      ["inputTransportMode", "transportMode"],
-      ["inputVehicleNo", "vehicleNo"],
-      ["inputSupplyDate", "supplyDate"],
-      ["inputPlaceOfSupply", "placeOfSupply"],
       ["inputBillName", "billName"],
       ["inputBillAddress", "billAddress"],
       ["inputBillGstin", "billGstin"],
-      ["inputBillStateCode", "billStateCode"],
       ["inputShipName", "shipName"],
       ["inputShipAddress", "shipAddress"],
       ["inputShipGstin", "shipGstin"],
-      ["inputShipState", "shipState"],
-      ["inputShipStateCode", "shipStateCode"],
-      ["inputRoundOff", "roundOff"],
       ["inputEmptyRows", "minRows"],
     ];
 
     fieldMap.forEach(([elId, key]) => {
-      $(elId).addEventListener("input", (e) => {
+      const evt = $(elId).tagName === "SELECT" ? "change" : "input";
+      $(elId).addEventListener(evt, (e) => {
         invoice[key] = e.target.value;
         renderInvoice();
       });
@@ -622,13 +1038,17 @@
       $("catalogModal").classList.remove("hidden");
     });
 
+    $("openPartiesBtn").addEventListener("click", () => {
+      renderPartiesTable();
+      $("partiesModal").classList.remove("hidden");
+    });
+
     $("openBusinessBtn").addEventListener("click", () => {
       $("bizName").value = business.name;
       $("bizPhone").value = business.phone;
       $("bizAddress").value = business.address;
       $("bizGstin").value = business.gstin;
-      $("bizState").value = business.state;
-      $("bizStateCode").value = business.stateCode;
+      $("bizStateSelect").value = business.stateCode || "37";
       $("bizBankName").value = business.bankName;
       $("bizBankBranch").value = business.bankBranch;
       $("bizBankAcc").value = business.bankAcc;
@@ -647,7 +1067,7 @@
     // Save Catalog Item
     $("catalogForm").addEventListener("submit", (e) => {
       e.preventDefault();
-      const newItem = {
+      catalog.push({
         id: "item-" + Date.now(),
         name: $("catName").value.trim(),
         hsn: $("catHsn").value.trim(),
@@ -656,27 +1076,45 @@
         cgst: Number($("catCgst").value) || 0,
         sgst: Number($("catSgst").value) || 0,
         igst: Number($("catIgst").value) || 0,
-      };
-      catalog.push(newItem);
+      });
       saveJson(STORAGE_KEYS.CATALOG, catalog);
       renderCatalogDropdown();
       renderCatalogTable();
       e.target.reset();
-      $("catCgst").value = 9;
-      $("catSgst").value = 9;
-      $("catIgst").value = 18;
+      $("catCgst").value = "9";
+      $("catSgst").value = "9";
+      $("catIgst").value = "18";
+    });
+
+    // Save Party
+    $("partyForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const st = findStateByCode($("partyFormState").value);
+      parties.push({
+        id: "party-" + Date.now(),
+        name: $("partyFormName").value.trim(),
+        address: $("partyFormAddress").value.trim(),
+        gstin: $("partyFormGstin").value.trim().toUpperCase(),
+        state: st.short,
+        stateCode: st.code,
+      });
+      saveJson(STORAGE_KEYS.PARTIES, parties);
+      renderPartyDropdowns();
+      renderPartiesTable();
+      e.target.reset();
     });
 
     // Save Business Details
     $("businessForm").addEventListener("submit", (e) => {
       e.preventDefault();
+      const st = findStateByCode($("bizStateSelect").value);
       business = {
         name: $("bizName").value.trim(),
         phone: $("bizPhone").value.trim(),
         address: $("bizAddress").value.trim(),
         gstin: $("bizGstin").value.trim().toUpperCase(),
-        state: $("bizState").value.trim(),
-        stateCode: $("bizStateCode").value.trim(),
+        state: st.name,
+        stateCode: st.code,
         bankName: $("bizBankName").value.trim(),
         bankBranch: $("bizBankBranch").value.trim(),
         bankAcc: $("bizBankAcc").value.trim(),
@@ -698,8 +1136,10 @@
   }
 
   // Initialize
+  setupAllDropdowns();
   renderBusinessDetails();
   renderCatalogDropdown();
+  renderPartyDropdowns();
   syncFormInputsFromInvoice();
   renderInvoice();
   updateLiveItemPreview();

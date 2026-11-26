@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GST Tax Invoice Designer &amp; Bill Maker</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Top Control Bar (hidden when printing) -->
+  <header class="app-toolbar no-print">
+    <div class="toolbar-brand">
+      <span class="brand-badge">GST</span>
+      <div>
+        <h1>Tax Invoice Designer</h1>
+        <p>Select items from dropdown, customize your bill &amp; print/save PDF</p>
+      </div>
+    </div>
+
+    <div class="toolbar-actions">
+      <label class="theme-toggle" title="Switch between Yellow Bill Book look and White A4 paper">
+        <input type="checkbox" id="paperThemeToggle" checked />
+        <span>Yellow Bill Paper</span>
+      </label>
+      <button type="button" class="btn btn-secondary" id="openCatalogBtn">Manage Items</button>
+      <button type="button" class="btn btn-secondary" id="openBusinessBtn">Business Settings</button>
+      <button type="button" class="btn btn-secondary" id="newBillBtn">New Blank Bill</button>
+      <button type="button" class="btn btn-secondary" id="loadSampleBtn">Load Sample Bill</button>
+      <button type="button" class="btn btn-primary" id="printBillBtn">Print / Save PDF</button>
+    </div>
+  </header>
+
+  <main class="workspace no-print-bg">
+    <!-- Left Sidebar: Quick Entry & Controls (hidden when printing) -->
+    <aside class="control-panel no-print">
+      <!-- Add Item from Dropdown -->
+      <section class="panel-card">
+        <h2>1. Add Item to Bill</h2>
+        <div class="form-group">
+          <label for="itemSelect">Select Item (Dropdown)</label>
+          <select id="itemSelect">
+            <option value="">-- Choose an item --</option>
+          </select>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="itemQty">Qty</label>
+            <input type="number" id="itemQty" min="0.01" step="any" value="1" />
+          </div>
+          <div class="form-group">
+            <label for="itemRate">Rate (&#8377;)</label>
+            <input type="number" id="itemRate" min="0" step="any" placeholder="0.00" />
+          </div>
+        </div>
+
+        <div class="form-row-3">
+          <div class="form-group">
+            <label for="itemHsn">HSN</label>
+            <input type="text" id="itemHsn" placeholder="3302" />
+          </div>
+          <div class="form-group">
+            <label for="itemUom">UOM</label>
+            <input type="text" id="itemUom" placeholder="5kg" />
+          </div>
+          <div class="form-group">
+            <label for="itemGstType">GST Mode</label>
+            <select id="itemGstType">
+              <option value="cgst_sgst">CGST + SGST</option>
+              <option value="igst">IGST</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row-2" id="cgstSgstInputs">
+          <div class="form-group">
+            <label for="itemCgst">CGST %</label>
+            <input type="number" id="itemCgst" min="0" max="50" step="any" value="9" />
+          </div>
+          <div class="form-group">
+            <label for="itemSgst">SGST %</label>
+            <input type="number" id="itemSgst" min="0" max="50" step="any" value="9" />
+          </div>
+        </div>
+
+        <div class="form-group hidden" id="igstInputGroup">
+          <label for="itemIgst">IGST %</label>
+          <input type="number" id="itemIgst" min="0" max="50" step="any" value="18" />
+        </div>
+
+        <div class="live-calc-preview" id="liveItemPreview">
+          Taxable: &#8377;0.00 | Tax: &#8377;0.00 | Total: &#8377;0.00
+        </div>
+
+        <button type="button" class="btn btn-primary btn-full" id="addItemBtn">+ Add Item to Bill</button>
+      </section>
+
+      <!-- Invoice & Customer Details -->
+      <section class="panel-card">
+        <h2>2. Invoice &amp; Party Details</h2>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="inputInvoiceNo">Invoice No.</label>
+            <input type="text" id="inputInvoiceNo" />
+          </div>
+          <div class="form-group">
+            <label for="inputInvoiceDate">Invoice Date</label>
+            <input type="text" id="inputInvoiceDate" placeholder="DD/MM/YY" />
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="inputPayMode">Cash / Credit</label>
+            <select id="inputPayMode">
+              <option value="Cash / Credit">Cash / Credit</option>
+              <option value="Cash">Cash</option>
+              <option value="Credit">Credit</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="inputReverseCharge">Reverse Charge</label>
+            <select id="inputReverseCharge">
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="inputTransportMode">Transport Mode</label>
+            <input type="text" id="inputTransportMode" />
+          </div>
+          <div class="form-group">
+            <label for="inputVehicleNo">Vehicle No.</label>
+            <input type="text" id="inputVehicleNo" />
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="inputSupplyDate">Date &amp; Time of Supply</label>
+            <input type="text" id="inputSupplyDate" />
+          </div>
+          <div class="form-group">
+            <label for="inputPlaceOfSupply">Place of Supply</label>
+            <input type="text" id="inputPlaceOfSupply" />
+          </div>
+        </div>
+
+        <hr class="divider" />
+        <h3>Billed To (Receiver)</h3>
+        <div class="form-group">
+          <label for="inputBillName">Party Name</label>
+          <input type="text" id="inputBillName" />
+        </div>
+        <div class="form-group">
+          <label for="inputBillAddress">Address</label>
+          <input type="text" id="inputBillAddress" />
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="inputBillGstin">GSTIN No.</label>
+            <input type="text" id="inputBillGstin" maxlength="15" />
+          </div>
+          <div class="form-group">
+            <label for="inputBillStateCode">State Code</label>
+            <input type="text" id="inputBillStateCode" maxlength="2" />
+          </div>
+        </div>
+
+        <label class="checkbox-inline">
+          <input type="checkbox" id="sameAsBilledToggle" checked />
+          <span>Shipped To is same as Billed To</span>
+        </label>
+
+        <div id="shippedToFields" class="hidden">
+          <hr class="divider" />
+          <h3>Shipped To (Consignee)</h3>
+          <div class="form-group">
+            <label for="inputShipName">Consignee Name</label>
+            <input type="text" id="inputShipName" />
+          </div>
+          <div class="form-group">
+            <label for="inputShipAddress">Address</label>
+            <input type="text" id="inputShipAddress" />
+          </div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label for="inputShipGstin">GSTIN</label>
+              <input type="text" id="inputShipGstin" maxlength="15" />
+            </div>
+            <div class="form-group">
+              <label for="inputShipState">State</label>
+              <input type="text" id="inputShipState" />
+            </div>
+            <div class="form-group">
+              <label for="inputShipStateCode">Code</label>
+              <input type="text" id="inputShipStateCode" maxlength="2" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row-2" style="margin-top: 10px;">
+          <div class="form-group">
+            <label for="inputRoundOff">Round Off (&#8377;)</label>
+            <input type="number" id="inputRoundOff" step="0.01" value="0" />
+          </div>
+          <div class="form-group">
+            <label for="inputEmptyRows">Min Table Rows</label>
+            <input type="number" id="inputEmptyRows" min="5" max="20" value="13" />
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Right Area: Live Bill / Tax Invoice Preview -->
+    <section class="invoice-stage">
+      <div id="invoiceSheet" class="invoice-sheet theme-yellow">
+        <!-- Top Header Grid -->
+        <div class="inv-top-grid">
+          <div class="inv-company-block">
+            <div class="inv-top-symbols">
+              <span class="inv-symbols">&#2384; &#21328;</span>
+              <span class="inv-cell">Cell : <strong id="viewCompanyPhone"></strong></span>
+            </div>
+            <h1 class="inv-company-name" id="viewCompanyName"></h1>
+            <p class="inv-company-addr" id="viewCompanyAddress"></p>
+            <div class="inv-gstin-pill">
+              GSTIN : <strong id="viewCompanyGstin"></strong>
+            </div>
+          </div>
+
+          <div class="inv-title-block">
+            <div class="inv-title-bar">
+              <span>TAX INVOICE</span>
+              <span id="viewPayMode" class="inv-pay-mode">Cash / Credit</span>
+            </div>
+            <div class="inv-section-note">Supply of goods under GST Act Section - 31(1)</div>
+            <div class="inv-copy-checks">
+              <label><input type="checkbox" id="copyOriginal" checked /> Original for Recipient</label>
+              <label><input type="checkbox" id="copyDuplicate" /> Duplicate for Supplier / Transporter</label>
+              <label><input type="checkbox" id="copyTriplicate" /> Triplicate for Supplier</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Invoice Meta & Transport Grid -->
+        <div class="inv-meta-grid">
+          <div class="inv-meta-left">
+            <div class="meta-line"><span>Invoice No.</span><span>: <strong id="viewInvoiceNo"></strong></span></div>
+            <div class="meta-line"><span>Invoice Date</span><span>: <strong id="viewInvoiceDate"></strong></span></div>
+            <div class="meta-line"><span>Reverse Charge</span><span>: <span id="viewReverseCharge">(No)</span></span></div>
+            <div class="meta-line meta-state-row">
+              <span>State</span>
+              <span>: <span id="viewCompanyState"></span></span>
+              <span class="state-code-label">State Code</span>
+              <span class="state-code-box" id="viewCompanyStateCode"></span>
+            </div>
+          </div>
+          <div class="inv-meta-right">
+            <div class="meta-line"><span>Transportation Mode</span><span>: <strong id="viewTransportMode"></strong></span></div>
+            <div class="meta-line"><span>Vehicle Number</span><span>: <strong id="viewVehicleNo"></strong></span></div>
+            <div class="meta-line"><span>Date &amp; Time of Supply</span><span>: <strong id="viewSupplyDate"></strong></span></div>
+            <div class="meta-line"><span>Place of Supply</span><span>: <strong id="viewPlaceOfSupply"></strong></span></div>
+          </div>
+        </div>
+
+        <!-- Billed To & Shipped To Grid -->
+        <div class="inv-party-grid">
+          <div class="inv-party-box">
+            <div class="party-header">Details of Receiver (Billed to)</div>
+            <div class="party-body">
+              <div class="party-line"><span>Name</span><span>: <strong id="viewBillName"></strong></span></div>
+              <div class="party-line"><span>Address</span><span>: <strong id="viewBillAddress"></strong></span></div>
+              <div class="party-gstin-row">
+                <span>GSTIN No. :</span>
+                <div class="gstin-cells" id="viewBillGstinBoxes"></div>
+                <span class="state-code-label">State Code</span>
+                <span class="state-code-box" id="viewBillStateCode"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="inv-party-box">
+            <div class="party-header">Details of Consignee (Shipped to)</div>
+            <div class="party-body">
+              <div class="party-line"><span>Name</span><span>: <strong id="viewShipName"></strong></span></div>
+              <div class="party-line"><span>Address</span><span>: <strong id="viewShipAddress"></strong></span></div>
+              <div class="party-line"><span>GSTIN No.</span><span>: <strong id="viewShipGstin"></strong></span></div>
+              <div class="party-line meta-state-row">
+                <span>State</span>
+                <span>: <strong id="viewShipState"></strong></span>
+                <span class="state-code-label">State Code</span>
+                <span class="state-code-box" id="viewShipStateCode"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Line Items Table -->
+        <table class="inv-items-table">
+          <thead>
+            <tr>
+              <th rowspan="2" class="col-sno">S.<br />No.</th>
+              <th rowspan="2" class="col-desc">Description of Goods</th>
+              <th rowspan="2" class="col-hsn">HSN<br />Code</th>
+              <th rowspan="2" class="col-uom">UOM</th>
+              <th rowspan="2" class="col-qty">Qty</th>
+              <th rowspan="2" class="col-rate">Rate</th>
+              <th rowspan="2" class="col-taxable">Taxable<br />Value</th>
+              <th colspan="2">CGST</th>
+              <th colspan="2">SGST</th>
+              <th colspan="2">IGST</th>
+              <th rowspan="2" class="col-action no-print">Action</th>
+            </tr>
+            <tr>
+              <th class="col-pct">Rate%</th>
+              <th class="col-amt">Amount</th>
+              <th class="col-pct">Rate%</th>
+              <th class="col-amt">Amount</th>
+              <th class="col-pct">Rate%</th>
+              <th class="col-amt">Amount</th>
+            </tr>
+          </thead>
+          <tbody id="invoiceItemsBody">
+            <!-- Dynamically populated -->
+          </tbody>
+          <tfoot>
+            <tr class="inv-total-row">
+              <td colspan="6" class="total-label">TOTAL</td>
+              <td class="num" id="totalTaxableCell">0</td>
+              <td></td>
+              <td class="num" id="totalCgstCell">0</td>
+              <td></td>
+              <td class="num" id="totalSgstCell">0</td>
+              <td></td>
+              <td class="num" id="totalIgstCell"></td>
+              <td class="no-print"></td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <!-- Bottom Summary & Bank Grid -->
+        <div class="inv-bottom-grid">
+          <div class="inv-bottom-left">
+            <div class="inv-words-box">
+              <span class="words-label">Amount in words :</span>
+              <strong id="viewAmountWords">Zero only</strong>
+            </div>
+            <div class="inv-bank-box">
+              <div class="bank-line"><span>Bank Name</span><span>: <strong id="viewBankName"></strong></span></div>
+              <div class="bank-line"><span>Branch</span><span>: <strong id="viewBankBranch"></strong></span></div>
+              <div class="bank-line"><span>A/c No.</span><span>: <strong id="viewBankAcc"></strong></span></div>
+              <div class="bank-line"><span>IFSC Code</span><span>: <strong id="viewBankIfsc"></strong></span></div>
+              <div class="bank-email">email : <span id="viewCompanyEmail"></span></div>
+            </div>
+            <div class="inv-terms-box">
+              <strong>Terms &amp; Conditions :</strong>
+              <ol id="viewTermsList"></ol>
+              <div class="eoe">E. &amp; O.E.</div>
+            </div>
+          </div>
+
+          <div class="inv-bottom-right">
+            <table class="inv-summary-table">
+              <tr>
+                <td>Total Amount before Tax</td>
+                <td class="num strong" id="sumBeforeTax">0.00</td>
+              </tr>
+              <tr>
+                <td>Add. CGST &nbsp;&nbsp;&nbsp;&nbsp; %</td>
+                <td class="num" id="sumCgst">0.00</td>
+              </tr>
+              <tr>
+                <td>Add. SGST &nbsp;&nbsp;&nbsp;&nbsp; %</td>
+                <td class="num" id="sumSgst">0.00</td>
+              </tr>
+              <tr>
+                <td>Add. IGST &nbsp;&nbsp;&nbsp;&nbsp; %</td>
+                <td class="num" id="sumIgst"></td>
+              </tr>
+              <tr>
+                <td>Round off</td>
+                <td class="num" id="sumRoundOff"></td>
+              </tr>
+              <tr>
+                <td class="strong">Total Amount GST</td>
+                <td class="num strong" id="sumTotalGst">0.00</td>
+              </tr>
+              <tr class="grand-total-row">
+                <td class="strong">Total Amount After Tax</td>
+                <td class="num strong" id="sumAfterTax">0.00</td>
+              </tr>
+            </table>
+
+            <div class="inv-signatory-box">
+              <div class="cert-text">Certified that the Particulars Given above are True &amp; Correct</div>
+              <div class="for-company">For <strong id="viewSignatoryCompany"></strong></div>
+              <div class="sign-space"></div>
+              <div class="auth-sign">Authorised Signatory</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal: Manage Item Catalog -->
+  <div id="catalogModal" class="modal hidden no-print">
+    <div class="modal-backdrop" data-close="catalogModal"></div>
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h2>Manage Item Catalog (Dropdown Items)</h2>
+        <button type="button" class="btn-close" data-close="catalogModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="catalogForm" class="catalog-form">
+          <div class="form-row-3">
+            <div class="form-group">
+              <label for="catName">Item Name / Description</label>
+              <input type="text" id="catName" required placeholder="e.g. Pineapple (INT Emu KP 1504)" />
+            </div>
+            <div class="form-group">
+              <label for="catHsn">HSN Code</label>
+              <input type="text" id="catHsn" required placeholder="3302" />
+            </div>
+            <div class="form-group">
+              <label for="catUom">UOM</label>
+              <input type="text" id="catUom" required placeholder="5kg" />
+            </div>
+          </div>
+          <div class="form-row-4">
+            <div class="form-group">
+              <label for="catRate">Default Rate (&#8377;)</label>
+              <input type="number" id="catRate" required min="0" step="any" placeholder="2250" />
+            </div>
+            <div class="form-group">
+              <label for="catCgst">CGST %</label>
+              <input type="number" id="catCgst" required min="0" step="any" value="9" />
+            </div>
+            <div class="form-group">
+              <label for="catSgst">SGST %</label>
+              <input type="number" id="catSgst" required min="0" step="any" value="9" />
+            </div>
+            <div class="form-group">
+              <label for="catIgst">IGST %</label>
+              <input type="number" id="catIgst" required min="0" step="any" value="18" />
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">+ Save Item to Dropdown</button>
+        </form>
+
+        <div class="catalog-table-wrap">
+          <table class="catalog-table">
+            <thead>
+              <tr>
+                <th>Item Name</th>
+                <th>HSN</th>
+                <th>UOM</th>
+                <th>Rate (&#8377;)</th>
+                <th>CGST / SGST / IGST</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="catalogTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Business & Bank Settings -->
+  <div id="businessModal" class="modal hidden no-print">
+    <div class="modal-backdrop" data-close="businessModal"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Customize Your Business &amp; Bank Details</h2>
+        <button type="button" class="btn-close" data-close="businessModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="businessForm">
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="bizName">Company / Agency Name</label>
+              <input type="text" id="bizName" required />
+            </div>
+            <div class="form-group">
+              <label for="bizPhone">Cell / Phone</label>
+              <input type="text" id="bizPhone" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="bizAddress">Address</label>
+            <input type="text" id="bizAddress" />
+          </div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label for="bizGstin">GSTIN</label>
+              <input type="text" id="bizGstin" />
+            </div>
+            <div class="form-group">
+              <label for="bizState">State</label>
+              <input type="text" id="bizState" />
+            </div>
+            <div class="form-group">
+              <label for="bizStateCode">State Code</label>
+              <input type="text" id="bizStateCode" />
+            </div>
+          </div>
+          <hr class="divider" />
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="bizBankName">Bank Name</label>
+              <input type="text" id="bizBankName" />
+            </div>
+            <div class="form-group">
+              <label for="bizBankBranch">Branch</label>
+              <input type="text" id="bizBankBranch" />
+            </div>
+          </div>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="bizBankAcc">A/c No.</label>
+              <input type="text" id="bizBankAcc" />
+            </div>
+            <div class="form-group">
+              <label for="bizBankIfsc">IFSC Code</label>
+              <input type="text" id="bizBankIfsc" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="bizEmail">Email</label>
+            <input type="email" id="bizEmail" />
+          </div>
+          <div class="form-group">
+            <label for="bizTerms">Terms &amp; Conditions (one per line)</label>
+            <textarea id="bizTerms" rows="3"></textarea>
+          </div>
+          <div class="modal-footer-actions">
+            <button type="button" class="btn btn-secondary" id="resetBizBtn">Reset to Sample</button>
+            <button type="submit" class="btn btn-primary">Save Business Details</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
